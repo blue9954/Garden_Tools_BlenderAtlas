@@ -12,6 +12,9 @@ L3 package  : blender --command extension validate / build
 ACC         : (opt-in) tests/integration/render_compare.py, 5 objects / 11 materials,
               source vs atlas rendered and diffed. `python tools/harness.py ACC`
               GA_DEVICE=METAL|CUDA|OPTIX runs L2 on the GPU.
+UE          : (opt-in) Blender exports SM_/T_ + FBX, UnrealEditor-Cmd imports them
+              headless and checks slots, UV0, scale, texture settings, material.
+              `python tools/harness.py UE`  (UE_ROOT=/path/to/UE_5.x)
 L4 manual   : printed as BLOCKED (real GUI + Unreal import must be done by a person)
 """
 
@@ -203,9 +206,64 @@ def level_acc(blender):
     return [] if r.returncode == 0 else [f"render comparison failed (exit {r.returncode})"]
 
 
+UPROJECT = {"FileVersion": 3, "EngineAssociation": "", "Category": "", "Description": "",
+            "Plugins": [{"Name": "PythonScriptPlugin", "Enabled": True},
+                        {"Name": "EditorScriptingUtilities", "Enabled": True}]}
+
+
+def find_unreal_cmd():
+    roots = [os.environ.get("UE_ROOT")] + sorted(glob.glob("/Users/Shared/Epic Games/UE_5.*"), reverse=True) \
+        + sorted(glob.glob(r"C:\Program Files\Epic Games\UE_5.*"), reverse=True)
+    for r in roots:
+        if not r:
+            continue
+        for rel in ("Engine/Binaries/Mac/UnrealEditor-Cmd", "Engine/Binaries/Win64/UnrealEditor-Cmd.exe",
+                    "Engine/Binaries/Linux/UnrealEditor-Cmd"):
+            p = os.path.join(r, rel)
+            if os.path.isfile(p):
+                return p
+    return None
+
+
+def level_ue(blender):
+    ue = find_unreal_cmd()
+    if not blender or not ue:
+        return [f"BLOCKED: {'Blender' if not blender else 'UnrealEditor-Cmd (set UE_ROOT)'} not found"]
+    work = os.path.join(DIST, "ue_check")
+    shutil.rmtree(work, ignore_errors=True)
+    assets, proj = os.path.join(work, "assets"), os.path.join(work, "proj")
+    os.makedirs(assets)
+    os.makedirs(os.path.join(proj, "Content"))
+    with open(os.path.join(proj, "GACheck.uproject"), "w") as f:
+        json.dump(UPROJECT, f)
+    r = subprocess.run([blender, "-b", "--factory-startup", "--python-exit-code", "1", "--python",
+                        os.path.join(ROOT, "tests", "ue", "make_assets.py"), "--", assets],
+                       capture_output=True, text=True)
+    if r.returncode != 0:
+        return [f"Blender export failed: {r.stderr[-500:]}"]
+    result = os.path.join(work, "ue_result.json")
+    env = dict(os.environ, GA_UE_IN=assets, GA_UE_NAME="UECheck", GA_UE_RESULT=result)
+    print(f"UnrealEditor-Cmd: {ue}")
+    with open(os.path.join(work, "ue_log.txt"), "w") as log:
+        subprocess.run([ue, os.path.join(proj, "GACheck.uproject"), "-run=pythonscript",
+                        f"-script={os.path.join(ROOT, 'tests', 'ue', 'ue_check.py')}", "-unattended",
+                        "-nop4", "-nosplash", "-nullrhi", "-stdout", "-FullStdOutLogOutput"],
+                       env=env, stdout=log, stderr=subprocess.STDOUT, timeout=3600)
+    if not os.path.isfile(result):
+        return [f"Unreal produced no result (see {work}/ue_log.txt)"]
+    res = json.load(open(result, encoding="utf-8"))
+    for k, v in res["checks"].items():
+        print(f"  [{'PASS' if v['pass'] else 'FAIL'}] {k} {v['detail']}")
+    errs = [f"{k}: {v['detail']}" for k, v in res["checks"].items() if not v["pass"]]
+    errs += [e.strip().splitlines()[-1] for e in res["errors"]]
+    if len(res["checks"]) < 10:
+        errs.append(f"only {len(res['checks'])} checks ran")
+    return errs
+
+
 def main():
     args = [a for a in sys.argv[1:]]
-    levels = [a for a in args if a in ("L0", "L1", "L2", "L3", "ACC")] or ["L0", "L1", "L2", "L3"]
+    levels = [a for a in args if a in ("L0", "L1", "L2", "L3", "ACC", "UE")] or ["L0", "L1", "L2", "L3"]
     select = [a for a in args if a not in levels]
     blender = find_blender()
     print(f"Blender: {blender or 'not found'}")
@@ -214,7 +272,8 @@ def main():
         print(f"\n===== {lv} =====", flush=True)
         t0 = time.perf_counter()
         fn = {"L0": level0, "L1": lambda: level1(blender), "L2": lambda: level2(blender, select),
-              "L3": lambda: level3(blender), "ACC": lambda: level_acc(blender)}[lv]
+              "L3": lambda: level3(blender), "ACC": lambda: level_acc(blender),
+              "UE": lambda: level_ue(blender)}[lv]
         errs = fn()
         dt = time.perf_counter() - t0
         blocked = errs and all(e.startswith("BLOCKED") for e in errs)
@@ -225,7 +284,8 @@ def main():
     summary.append(("L4", "BLOCKED", 0.0))
     print("\n===== summary =====")
     for lv, st, dt in summary:
-        note = "  (manual: Blender GUI + Unreal import, see docs/L4_checklist.md)" if lv == "L4" else ""
+        note = ("  (scripted parts: gui_l4.py, ACC, UE; still manual: CUDA/OptiX, UE visual"
+                " -> docs/L4_checklist.md)") if lv == "L4" else ""
         print(f"{lv}: {st:8s} {dt:6.1f}s{note}")
     sys.exit(0 if all(st in ("PASS", "BLOCKED") for lv, st, _ in summary if lv != "L4")
              and not any(st == "FAIL" for _, st, _ in summary) else 1)

@@ -51,7 +51,9 @@ python3 tools/harness.py           # BLENDER=/path/to/blender 로 실행 파일 
 - L2를 GPU로: `GA_DEVICE=METAL python3 tools/harness.py L2` → 22/22 PASS (Apple M5 Max)
 - ACC(인수 비교, `python3 tools/harness.py ACC`): 오브젝트 5 · 머티리얼 11, 원본과 결과를 같은 카메라로 렌더해 비교 → 평균 차이 1.1/255, p95 3/255 PASS. 결과 이미지는 `dist/acceptance/`
 - GUI 스모크(`blender --factory-startup --python tests/integration/gui_smoke.py`): 패널 그리기와 모달 실행 PASS
-- L4: 일부 BLOCKED (Blender 5.1 실기, Unreal 임포트)
+- GUI L4(`blender --factory-startup --enable-event-simulate --python tests/integration/gui_l4.py`): 실제 ESC로 취소, UV 에디터에서 수정 후 베이크만 다시 실행 PASS
+- UE(`python3 tools/harness.py UE`, UE 5.8 헤드리스): 슬롯 1개, UV0 = UVAtlas, 스케일, 텍스처 설정, 머티리얼 구성 14/14 PASS. 권장 임포트 설정은 `docs/L4_checklist.md`
+- 남은 L4: CUDA/OptiX(NVIDIA 없음), UE 화면 확인, Blender 5.1(사용자 결정으로 5.3으로 대신 확인)
 
 ## 13장 미확인 항목 — 확정 결과
 | 항목 | 결과 | 반영 |
