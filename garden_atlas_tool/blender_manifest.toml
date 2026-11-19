@@ -1,0 +1,17 @@
+schema_version = "1.0.0"
+
+id = "garden_atlas_tool"
+version = "0.2.0"
+name = "Garden Atlas Tool"
+tagline = "Bake many meshes and materials into one texture atlas"
+maintainer = "Garden Tools"
+type = "add-on"
+
+tags = ["Material", "UV", "Bake", "Game Engine"]
+
+blender_version_min = "5.1.0"
+
+license = ["SPDX:GPL-3.0-or-later"]
+
+[permissions]
+files = "Save baked textures and the atlas manifest to the output folder"
