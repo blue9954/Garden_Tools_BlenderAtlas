@@ -3,12 +3,20 @@
 Blender 5.1+ Extension. 선택한 여러 메시 · 머티리얼 슬롯을 Cycles 베이크로 텍스처 세트 1개 + 머티리얼 1개(Unreal 규격)로 합친다.
 명세: `docs/Garden_Atlas_Tool_작업명세서.docx` (v0.1, 15장 미결 사항은 "가정" 값으로 구현).
 
+## 다운로드
+- **최신 릴리스**: [Releases › Latest](https://github.com/blue9954/Garden_Tools_BlenderAtlas/releases/latest)
+- **v0.2.0 zip 바로 받기**: [garden_atlas_tool-0.2.0.zip](https://github.com/blue9954/Garden_Tools_BlenderAtlas/releases/download/v0.2.0/garden_atlas_tool-0.2.0.zip)
+  (SHA-256 `1a1f1a7b2d74002aa4fae627b454c4dfedfb83663241d42b090aa6685e0a601c`)
+
 ## 설치
+1. 위에서 zip을 받는다. 압축은 풀지 않는다.
+2. Blender 5.1 이상 → Edit › Preferences › Get Extensions › ▾ › **Install from Disk…** → zip 선택.
+3. 3D 뷰포트 N-패널 **Garden** 탭 → **Atlas**.
+
+소스에서 직접 빌드하려면:
 ```bash
-python3 tools/harness.py L3        # dist/garden_atlas_tool-0.1.0.zip 생성
+python3 tools/harness.py L3        # dist/garden_atlas_tool-<버전>.zip 생성
 ```
-Blender → Edit › Preferences › Get Extensions › ▾ › Install from Disk… 로 zip 설치.
-3D 뷰포트 N-패널 **Garden** 탭 → **Atlas**.
 
 ## 사용
 1. 합칠 오브젝트 선택 → **검사** (경고/오류 목록, 항목 클릭 시 해당 오브젝트 선택)
